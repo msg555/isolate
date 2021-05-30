@@ -114,9 +114,10 @@ fail:
   return result;
 }
 
-static void __attribute__((format(printf,3,4)))
+static int __attribute__((format(printf,3,4)))
 cg_write(cg_controller controller, const char *attr, const char *fmt, ...)
 {
+  int result = 0;
   int maybe = 0;
   if (attr[0] == '?')
     {
@@ -158,10 +159,14 @@ cg_write(cg_controller controller, const char *attr, const char *fmt, ...)
   if (written != n)
     die("Short write to %s (%d out of %d bytes)", path, written, n);
 
+  result = 0;
+
 fail_close:
   close(fd);
 fail:
   va_end(args);
+
+  return result;
 }
 
 void
@@ -238,8 +243,10 @@ cg_enter(void)
 
   if (cg_memory_limit)
     {
-      cg_write(CG_MEMORY, "memory.limit_in_bytes", "%lld\n", (long long) cg_memory_limit << 10);
+      int ok = cg_write(CG_MEMORY, "?memory.limit_in_bytes", "%lld\n", (long long) cg_memory_limit << 10);
       cg_write(CG_MEMORY, "?memory.memsw.limit_in_bytes", "%lld\n", (long long) cg_memory_limit << 10);
+      if (!ok)
+        cg_write(CG_MEMORY, "memory.limit_in_bytes", "%lld\n", (long long) cg_memory_limit << 10);
       cg_write(CG_MEMORY, "memory.max_usage_in_bytes", "0\n");
       cg_write(CG_MEMORY, "?memory.memsw.max_usage_in_bytes", "0\n");
     }
